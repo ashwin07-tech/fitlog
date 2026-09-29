@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitLog — User Profile & BMR</title>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5.3 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --burn: #10b981;
+            --burn-light: #ecfdf5;
+            --intake: #f59e0b;
+            --surface: #ffffff;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+        .navbar-custom {
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+        }
+        .card-custom {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 4px 15px -3px rgba(15, 23, 42, 0.04);
+        }
+        .bmr-highlight {
+            background: linear-gradient(135deg, #4f46e5 0%, #6366f1 100%);
+            color: white;
+            border-radius: 16px;
+            padding: 1.75rem;
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP NAVIGATION BAR -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-2 sticky-top">
+    <div class="container-xl">
+        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" th:href="@{/dashboard}">
+            <span class="p-1 rounded-3 bg-primary text-white"><i class="bi bi-activity"></i></span>
+            <span>FitLog</span>
+            <span class="badge bg-primary-subtle text-primary-emphasis fs-8 rounded-pill px-2">MVP</span>
+        </a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/dashboard}">
+                        <i class="bi bi-grid-1x2-fill me-1"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/workouts/log}">
+                        <i class="bi bi-lightning-charge-fill me-1"></i> Log Workout
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/meals/log}">
+                        <i class="bi bi-egg-fried me-1"></i> Log Meal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 active text-white fw-semibold" th:href="@{/profile}">
+                        <i class="bi bi-person-circle me-1 text-primary"></i> Profile & BMR
+                    </a>
+                </li>
+            </ul>
+
+            <div class="d-flex align-items-center gap-3">
+                <a th:href="@{/swagger-ui.html}" target="_blank" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                    <i class="bi bi-code-slash me-1"></i> Swagger API Docs
+                </a>
+
+                <!-- User Switcher Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-dark border border-secondary-subtle rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 text-white" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-check-fill text-success"></i>
+                        <span th:text="${currentUser.name != null ? currentUser.name : currentUser.username}">Alex Mercer</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2">
+                        <li class="dropdown-header text-uppercase fs-8 fw-bold">Switch Demo User</li>
+                        <li th:each="u : ${allUsers}">
+                            <form th:action="@{/users/switch}" method="post" class="m-0">
+                                <input type="hidden" name="userId" th:value="${u.id}"/>
+                                <button type="submit" class="dropdown-item d-flex align-items-center justify-content-between py-2"
+                                        th:classappend="${u.id == currentUser.id} ? 'active bg-primary' : ''">
+                                    <span th:text="${u.name != null ? u.name : u.username}">User</span>
+                                    <span class="badge bg-secondary-subtle text-dark fs-8" th:text="${u.username}">username</span>
+                                </button>
+                            </form>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <button class="dropdown-item text-primary" data-bs-toggle="modal" data-bs-target="#registerModal">
+                                <i class="bi bi-plus-circle me-1"></i> Register New User
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- MAIN CONTAINER -->
+<div class="container-xl py-4">
+
+    <!-- Flash Messages -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <span th:text="${successMessage}">Success message</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <strong class="me-1">Validation Notice:</strong>
+        <span th:text="${errorMessage}">Error message</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- HEADER TITLE -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">User Account & Profile</h2>
+            <p class="text-muted mb-0">Manage fitness profile, calculate Basal Metabolic Rate (BMR), and set targets.</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#registerModal">
+                <i class="bi bi-person-plus me-1"></i> New User
+            </button>
+            <a th:href="@{/dashboard}" class="btn btn-primary rounded-pill px-4">
+                <i class="bi bi-arrow-left me-1"></i> Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- LEFT: BMR CALCULATOR & PROFILE SUMMARY -->
+        <div class="col-lg-5">
+            <!-- BMR Banner -->
+            <div class="bmr-highlight shadow mb-4">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <span class="badge bg-white text-primary fw-bold px-3 py-1 rounded-pill">Mifflin-St Jeor Formula</span>
+                    <i class="bi bi-fire fs-3"></i>
+                </div>
+                <div class="text-white-50 small text-uppercase fw-bold letter-spacing-1">Estimated Basal Metabolic Rate</div>
+                <div class="display-5 fw-extrabold my-2">
+                    <span th:text="${calculatedBMR}">1680</span> <span class="fs-4 fw-normal">kcal / day</span>
+                </div>
+                <p class="small text-white-50 mb-3">
+                    Your body burns approx <strong class="text-white" th:text="${calculatedBMR}">1680</strong> kcal at complete rest.
+                    Daily maintenance with light exercise is approx <strong class="text-white" th:text="${calculatedBMR + 400}">2080</strong> kcal.
+                </p>
+                <div class="p-2 rounded-3 bg-white bg-opacity-10 small">
+                    <i class="bi bi-info-circle me-1"></i> Formula: <code>10 × Weight(kg) + 6.25 × Height(cm) - 5 × Age + 5</code>
+                </div>
+            </div>
+
+            <!-- Profile Info Card -->
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-person-vcard text-primary"></i> Current Details
+                </h5>
+                <ul class="list-group list-group-flush small">
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Full Name:</span>
+                        <strong th:text="${currentUser.name}">Alex Mercer</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Username:</span>
+                        <code th:text="${currentUser.username}">alex_runner</code>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Email:</span>
+                        <span th:text="${currentUser.email}">alex@example.com</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Current Weight:</span>
+                        <strong class="text-primary" th:text="${currentUser.currentWeight + ' kg'}">72.5 kg</strong>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Birth Date:</span>
+                        <span th:text="${currentUser.birthDate}">1998-05-14</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between px-0 py-2">
+                        <span class="text-muted">Age:</span>
+                        <strong th:text="${userAge + ' years'}">27 years</strong>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- RIGHT: EDIT PROFILE & SET GOAL -->
+        <div class="col-lg-7">
+            <!-- Edit Profile Form -->
+            <div class="card card-custom p-4 mb-4">
+                <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-pencil-square text-primary"></i> Update Profile Details
+                </h5>
+                <form th:action="@{/profile/update}" method="post">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Full Name</label>
+                            <input type="text" class="form-control rounded-3" name="name" th:value="${currentUser.name}" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Current Weight (kg)</label>
+                            <input type="number" step="0.1" class="form-control rounded-3" name="currentWeight" th:value="${currentUser.currentWeight != null ? currentUser.currentWeight : 72.5}">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Birth Date</label>
+                            <input type="date" class="form-control rounded-3" name="birthDate" th:value="${currentUser.birthDate != null ? currentUser.birthDate : '1998-05-14'}">
+                        </div>
+                        <div class="col-md-6 d-flex align-items-end">
+                            <button type="submit" class="btn btn-primary rounded-pill w-100 py-2 fw-semibold">
+                                <i class="bi bi-arrow-repeat me-1"></i> Save & Recalculate BMR
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Set Weekly Goal Form -->
+            <div class="card card-custom p-4">
+                <h5 class="fw-bold mb-3 d-flex align-items-center gap-2">
+                    <i class="bi bi-bullseye text-warning"></i> Set Personal Weekly Goal
+                </h5>
+                <p class="text-muted small mb-3">Define your target workout sessions and daily calorie goal for the week.</p>
+                <form th:action="@{/goals}" method="post">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Weekly Workout Target (Sessions)</label>
+                            <input type="number" min="1" max="14" class="form-control rounded-3" name="targetWorkoutCount"
+                                   th:value="${currentGoal != null ? currentGoal.targetWorkoutCount : 4}" required>
+                            <div class="form-text small">E.g., 4 or 5 workouts/week</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold">Daily Calorie Target (kcal)</label>
+                            <input type="number" min="500" max="6000" step="50" class="form-control rounded-3" name="targetCalories"
+                                   th:value="${currentGoal != null ? currentGoal.targetCalories : 2000}">
+                            <div class="form-text small">Recommended: around maintenance</div>
+                        </div>
+                        <div class="col-12 mt-3">
+                            <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 py-2 fw-bold">
+                                <i class="bi bi-check2-circle me-1"></i> Update Weekly Goal
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- REGISTER NEW USER MODAL -->
+<div class="modal fade" id="registerModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">Register New User Profile</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/users/register}" method="post">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Username *</label>
+                        <input type="text" class="form-control rounded-3" name="username" placeholder="e.g. jessica_fit" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Full Name *</label>
+                        <input type="text" class="form-control rounded-3" name="name" placeholder="e.g. Jessica Taylor" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Email *</label>
+                        <input type="email" class="form-control rounded-3" name="email" placeholder="e.g. jessica@example.com" required>
+                    </div>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Weight (kg)</label>
+                            <input type="number" step="0.1" class="form-control rounded-3" name="currentWeight" value="65.0">
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Birth Date</label>
+                            <input type="date" class="form-control rounded-3" name="birthDate" value="2000-01-01">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4">Create & Switch</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

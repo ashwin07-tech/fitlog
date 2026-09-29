@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitLog — Personal Workout & Calorie Tracker</title>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5.3 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <!-- Chart.js for Progress & Daily Balance Visuals -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-light: #e0e7ff;
+            --burn: #10b981;
+            --burn-light: #ecfdf5;
+            --intake: #f59e0b;
+            --intake-light: #fffbeb;
+            --surface: #ffffff;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        body {
+            font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+
+        .navbar-custom {
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+        }
+
+        .card-custom {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 4px 15px -3px rgba(15, 23, 42, 0.04);
+            transition: all 0.2s ease-in-out;
+        }
+
+        .card-stat {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 1.25rem;
+            box-shadow: 0 2px 8px rgba(15, 23, 42, 0.03);
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .card-stat:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(15, 23, 42, 0.07);
+        }
+
+        .stat-icon {
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.35rem;
+        }
+
+        .badge-burn {
+            background-color: var(--burn-light);
+            color: #047857;
+            font-weight: 700;
+            padding: 0.35rem 0.7rem;
+            border-radius: 8px;
+        }
+
+        .badge-intake {
+            background-color: var(--intake-light);
+            color: #b45309;
+            font-weight: 700;
+            padding: 0.35rem 0.7rem;
+            border-radius: 8px;
+        }
+
+        .preset-chip {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 4px 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+        }
+        .preset-chip:hover {
+            background: #e2e8f0;
+            border-color: #94a3b8;
+            transform: scale(1.03);
+        }
+
+        .date-nav-btn {
+            border: 1px solid var(--border);
+            background: white;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-radius: 10px;
+            padding: 0.35rem 0.8rem;
+            font-size: 0.85rem;
+            text-decoration: none;
+            transition: all 0.15s ease;
+        }
+        .date-nav-btn:hover {
+            background: #f1f5f9;
+            color: var(--primary);
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP NAVIGATION BAR -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-2 sticky-top">
+    <div class="container-xl">
+        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" th:href="@{/dashboard}">
+            <span class="p-1 rounded-3 bg-primary text-white"><i class="bi bi-activity"></i></span>
+            <span>FitLog</span>
+            <span class="badge bg-primary-subtle text-primary-emphasis fs-8 rounded-pill px-2">MVP</span>
+        </a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                <li class="nav-item">
+                    <a class="nav-link px-3 active text-white fw-semibold" th:href="@{/dashboard}">
+                        <i class="bi bi-grid-1x2-fill me-1 text-primary"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/workouts/log}">
+                        <i class="bi bi-lightning-charge-fill me-1"></i> Log Workout
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/meals/log}">
+                        <i class="bi bi-egg-fried me-1"></i> Log Meal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/profile}">
+                        <i class="bi bi-person-circle me-1"></i> Profile & BMR
+                    </a>
+                </li>
+            </ul>
+
+            <div class="d-flex align-items-center gap-3">
+                <a th:href="@{/swagger-ui.html}" target="_blank" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                    <i class="bi bi-code-slash me-1"></i> Swagger API Docs
+                </a>
+
+                <!-- User Switcher Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-dark border border-secondary-subtle rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 text-white" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-check-fill text-success"></i>
+                        <span th:text="${currentUser.name != null ? currentUser.name : currentUser.username}">Alex Mercer</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2">
+                        <li class="dropdown-header text-uppercase fs-8 fw-bold">Switch Demo User</li>
+                        <li th:each="u : ${allUsers}">
+                            <form th:action="@{/users/switch}" method="post" class="m-0">
+                                <input type="hidden" name="userId" th:value="${u.id}"/>
+                                <button type="submit" class="dropdown-item d-flex align-items-center justify-content-between py-2"
+                                        th:classappend="${u.id == currentUser.id} ? 'active bg-primary' : ''">
+                                    <span th:text="${u.name != null ? u.name : u.username}">User</span>
+                                    <span class="badge bg-secondary-subtle text-dark fs-8" th:text="${u.username}">username</span>
+                                </button>
+                            </form>
+                        </li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li>
+                            <a th:href="@{/profile}" class="dropdown-item text-primary">
+                                <i class="bi bi-gear me-1"></i> Manage Profile & BMR
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- MAIN CONTAINER -->
+<div class="container-xl py-4">
+
+    <!-- Flash Messages for Business Rules & Validations -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <span th:text="${successMessage}">Operation successful!</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <strong class="me-1">Business Rule Alert:</strong>
+        <span th:text="${errorMessage}">Validation failed.</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- DASHBOARD ENTITY COUNTS & DATE HEADER -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">
+                Welcome back, <span class="text-primary" th:text="${currentUser.name != null ? currentUser.name : currentUser.username}">Alex</span>! 👋
+            </h2>
+            <p class="text-muted mb-0">Track workouts, meals, daily balance, and weekly milestones in real-time.</p>
+        </div>
+
+        <!-- 1-Click Day Navigation Bar -->
+        <div class="d-flex align-items-center gap-2 bg-white p-2 rounded-4 border shadow-sm">
+            <a th:href="@{/dashboard(date=${prevDate})}" class="date-nav-btn" title="Previous Day">
+                <i class="bi bi-chevron-left me-1"></i> Prev
+            </a>
+            <form th:action="@{/dashboard}" method="get" class="d-flex align-items-center gap-2 m-0">
+                <input type="date" name="date" class="form-control form-control-sm border-0 fw-bold text-center"
+                       style="width: 140px;" th:value="${selectedDate}" onchange="this.form.submit()">
+            </form>
+            <a th:href="@{/dashboard(date=${nextDate})}" class="date-nav-btn" title="Next Day">
+                Next <i class="bi bi-chevron-right ms-1"></i>
+            </a>
+            <a th:href="@{/dashboard}" class="btn btn-sm btn-outline-primary rounded-pill px-2 fw-semibold"
+               th:if="${!isToday}">Today</a>
+        </div>
+    </div>
+
+    <!-- 1. TOTAL COUNTS (Rubric Idea to Go Further: Total Counts across database) -->
+    <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+            <div class="card-stat">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Users</div>
+                        <h3 class="fw-extrabold mb-0 mt-1" th:text="${totalUsers}">3</h3>
+                    </div>
+                    <div class="stat-icon bg-primary-subtle text-primary">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card-stat">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Workouts</div>
+                        <h3 class="fw-extrabold mb-0 mt-1 text-success" th:text="${totalWorkouts}">12</h3>
+                    </div>
+                    <div class="stat-icon bg-success-subtle text-success">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card-stat">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Total Meals</div>
+                        <h3 class="fw-extrabold mb-0 mt-1 text-warning" th:text="${totalMeals}">24</h3>
+                    </div>
+                    <div class="stat-icon bg-warning-subtle text-warning">
+                        <i class="bi bi-egg-fried"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-6 col-md-3">
+            <div class="card-stat">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-bold text-uppercase">Weekly Target</div>
+                        <h3 class="fw-extrabold mb-0 mt-1 text-info"
+                            th:text="${currentGoal != null ? currentGoal.targetWorkoutCount + ' / wk' : '4 / wk'}">4 / wk</h3>
+                    </div>
+                    <div class="stat-icon bg-info-subtle text-info">
+                        <i class="bi bi-bullseye"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. DAILY CALORIE BALANCE & WEEKLY METRICS -->
+    <div class="row g-4 mb-4">
+        <!-- Daily Balance Card with Visual Chart -->
+        <div class="col-lg-7">
+            <div class="card card-custom p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-pie-chart-fill text-primary"></i>
+                        Daily Calorie Balance
+                        <span class="badge bg-light text-dark border small fw-normal ms-1" th:text="${selectedDate}">2026-09-29</span>
+                    </h5>
+                    <!-- Net Calorie Badge -->
+                    <span th:if="${dailyBalance.netCalories >= 0}" class="badge bg-warning-subtle text-warning-emphasis fw-bold px-3 py-2 rounded-pill">
+                        Surplus: +<span th:text="${dailyBalance.netCalories}">0</span> kcal
+                    </span>
+                    <span th:if="${dailyBalance.netCalories < 0}" class="badge bg-success-subtle text-success fw-bold px-3 py-2 rounded-pill">
+                        Deficit: <span th:text="${dailyBalance.netCalories}">0</span> kcal
+                    </span>
+                </div>
+
+                <div class="row align-items-center g-3 my-auto">
+                    <!-- Chart.js Canvas -->
+                    <div class="col-md-5 text-center">
+                        <div style="max-width: 170px; margin: 0 auto; position: relative;">
+                            <canvas id="calorieChart" width="170" height="170"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Burned vs Intake Metrics -->
+                    <div class="col-md-7">
+                        <div class="p-3 rounded-4 mb-2" style="background-color: var(--burn-light);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-success small fw-bold text-uppercase">
+                                        <i class="bi bi-fire me-1"></i> Calories Burned
+                                    </div>
+                                    <h3 class="fw-extrabold text-success mb-0 mt-1" th:text="${dailyBalance.caloriesBurned + ' kcal'}">0 kcal</h3>
+                                </div>
+                                <span class="badge bg-success text-white rounded-pill px-2 py-1 small" th:text="${dailyBalance.workoutsCount + ' workouts'}">0</span>
+                            </div>
+                        </div>
+
+                        <div class="p-3 rounded-4" style="background-color: var(--intake-light);">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <div class="text-warning-emphasis small fw-bold text-uppercase">
+                                        <i class="bi bi-cup-hot-fill me-1"></i> Calories Consumed
+                                    </div>
+                                    <h3 class="fw-extrabold text-warning-emphasis mb-0 mt-1" th:text="${dailyBalance.caloriesConsumed + ' kcal'}">0 kcal</h3>
+                                </div>
+                                <span class="badge bg-warning text-dark rounded-pill px-2 py-1 small" th:text="${dailyBalance.mealsCount + ' meals'}">0</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dual colored ratio progress bar -->
+                <div class="mt-3">
+                    <div class="progress" style="height: 10px; border-radius: 8px;">
+                        <div class="progress-bar bg-success" role="progressbar"
+                             th:style="|width: ${dailyBalance.caloriesBurned + dailyBalance.caloriesConsumed == 0 ? 50 : (dailyBalance.caloriesBurned * 100 / (dailyBalance.caloriesBurned + dailyBalance.caloriesConsumed))}%;|"
+                             title="Burned"></div>
+                        <div class="progress-bar bg-warning" role="progressbar"
+                             th:style="|width: ${dailyBalance.caloriesBurned + dailyBalance.caloriesConsumed == 0 ? 50 : (dailyBalance.caloriesConsumed * 100 / (dailyBalance.caloriesBurned + dailyBalance.caloriesConsumed))}%;|"
+                             title="Consumed"></div>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted mt-1">
+                        <span><i class="bi bi-square-fill text-success small"></i> Burned</span>
+                        <span><i class="bi bi-square-fill text-warning small"></i> Consumed</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Weekly Metrics & Goals Card -->
+        <div class="col-lg-5">
+            <div class="card card-custom p-4 h-100">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-trophy-fill text-warning"></i>
+                        Weekly Goal Progress
+                    </h5>
+                    <button class="btn btn-sm btn-outline-primary rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#goalModal">
+                        <i class="bi bi-pencil me-1"></i> Edit Goal
+                    </button>
+                </div>
+
+                <!-- Notice if no entries exist for current week (Business Rule #2 Enforced) -->
+                <div th:if="${weeklySummaryNotice}" class="alert alert-info border-0 rounded-4 p-3 small mb-3">
+                    <i class="bi bi-info-circle-fill me-1"></i>
+                    <span th:text="${weeklySummaryNotice}">No workouts completed this week yet.</span>
+                </div>
+
+                <!-- Weekly Summary Details -->
+                <div th:if="${weeklySummary}">
+                    <div class="d-flex justify-content-between align-items-baseline mb-2">
+                        <span class="text-muted fw-semibold">Workouts Completed</span>
+                        <span class="fw-bold fs-5">
+                            <span class="text-primary" th:text="${weeklySummary.workoutsCompleted}">0</span> /
+                            <span th:text="${weeklySummary.targetWorkouts}">4</span>
+                        </span>
+                    </div>
+                    <!-- Goal Progress Bar -->
+                    <div class="progress mb-3" style="height: 12px; border-radius: 8px;">
+                        <div class="progress-bar bg-primary progress-bar-striped progress-bar-animated" role="progressbar"
+                             th:style="|width: ${weeklySummary.targetWorkouts > 0 ? (weeklySummary.workoutsCompleted * 100 / weeklySummary.targetWorkouts) : 0}%;|"></div>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center p-3 rounded-4 bg-light mb-3">
+                        <div>
+                            <div class="text-muted small">Status</div>
+                            <strong th:if="${weeklySummary.goalMet}" class="text-success">
+                                <i class="bi bi-check-circle-fill me-1"></i> Goal Achieved! 🏆
+                            </strong>
+                            <strong th:if="${!weeklySummary.goalMet}" class="text-secondary">
+                                <i class="bi bi-hourglass-split me-1"></i> In Progress (<span th:text="${weeklySummary.targetWorkouts - weeklySummary.workoutsCompleted}">1</span> more to go)
+                            </strong>
+                        </div>
+                        <div class="text-end">
+                            <div class="text-muted small">Week's Total Burn</div>
+                            <strong class="text-success" th:text="${weeklySummary.totalCaloriesBurned + ' kcal'}">0 kcal</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- BMR Quick Hint -->
+                <div class="p-3 rounded-4 border bg-white mt-auto">
+                    <div class="d-flex align-items-center justify-content-between">
+                        <div>
+                            <div class="small text-muted fw-semibold">Profile Resting BMR</div>
+                            <div class="fw-bold text-dark"><span th:text="${currentUser.calculateBMR()}">1680</span> kcal/day</div>
+                        </div>
+                        <a th:href="@{/profile}" class="btn btn-sm btn-light rounded-pill px-3">
+                            Profile Details <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. ACTIONS & TABLES: WORKOUTS & MEALS -->
+    <div class="row g-4">
+        <!-- Workouts Column -->
+        <div class="col-lg-6">
+            <div class="card card-custom p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-lightning-charge-fill text-success"></i>
+                        Workouts
+                    </h5>
+                    <button class="btn btn-sm btn-success rounded-pill px-3" data-bs-toggle="modal" data-bs-target="#workoutModal">
+                        <i class="bi bi-plus-lg me-1"></i> Log Workout
+                    </button>
+                </div>
+
+                <!-- Instant Live Filter for Workouts -->
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="filterWorkoutsInput" class="form-control bg-light border-start-0" placeholder="Filter workouts by type or notes...">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="dashWorkoutsTable">
+                        <thead class="table-light">
+                            <tr class="small text-muted">
+                                <th>Date</th>
+                                <th>Activity</th>
+                                <th>Duration</th>
+                                <th>Burn</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${workouts.empty}">
+                                <td colspan="5" class="text-center text-muted py-4 small">
+                                    No workouts recorded. Click <strong>+ Log Workout</strong> above to add one!
+                                </td>
+                            </tr>
+                            <tr th:each="w : ${workouts}">
+                                <td class="small fw-semibold" th:text="${w.date}">2026-09-29</td>
+                                <td>
+                                    <strong class="text-dark d-block" th:text="${w.type}">Run</strong>
+                                    <small class="text-muted" th:if="${w.notes}" th:text="${w.notes}">Notes</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border" th:text="${w.duration + ' min'}">30 min</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success fw-bold" th:text="${'+ ' + w.caloriesBurnt + ' kcal'}">+300 kcal</span>
+                                </td>
+                                <td class="text-end">
+                                    <form th:action="@{/workouts/delete/{id}(id=${w.id})}" method="post" class="d-inline"
+                                          onsubmit="return confirm('Remove workout entry?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle" title="Delete">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Meals Column -->
+        <div class="col-lg-6">
+            <div class="card card-custom p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-egg-fried text-warning"></i>
+                        Meals & Foods
+                    </h5>
+                    <button class="btn btn-sm btn-warning text-dark rounded-pill px-3 fw-bold" data-bs-toggle="modal" data-bs-target="#mealModal">
+                        <i class="bi bi-plus-lg me-1"></i> Log Meal
+                    </button>
+                </div>
+
+                <!-- Instant Live Filter for Meals -->
+                <div class="mb-3">
+                    <div class="input-group input-group-sm">
+                        <span class="input-group-text bg-light border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="filterMealsInput" class="form-control bg-light border-start-0" placeholder="Filter meals by food item...">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="dashMealsTable">
+                        <thead class="table-light">
+                            <tr class="small text-muted">
+                                <th>Date</th>
+                                <th>Food Item</th>
+                                <th>Portion</th>
+                                <th>Calories</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${meals.empty}">
+                                <td colspan="5" class="text-center text-muted py-4 small">
+                                    No meals logged. Click <strong>+ Log Meal</strong> above to record your intake!
+                                </td>
+                            </tr>
+                            <tr th:each="m : ${meals}">
+                                <td class="small fw-semibold" th:text="${m.date}">2026-09-29</td>
+                                <td>
+                                    <strong class="text-dark" th:text="${m.foodItem}">Oatmeal</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border" th:text="${m.quantity}">1 bowl</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-warning-subtle text-warning-emphasis fw-bold" th:text="${m.calories + ' kcal'}">320 kcal</span>
+                                </td>
+                                <td class="text-end">
+                                    <form th:action="@{/meals/delete/{id}(id=${m.id})}" method="post" class="d-inline"
+                                          onsubmit="return confirm('Remove meal entry?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle" title="Delete">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================== -->
+<!-- QUICK ACTION MODALS                                             -->
+<!-- ============================================================== -->
+
+<!-- 1. LOG WORKOUT MODAL -->
+<div class="modal fade" id="workoutModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">⚡ Log Workout Session</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/workouts}" method="post" th:object="${newWorkout}">
+                <div class="modal-body">
+                    <!-- Presets -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">1-Click Activity Presets:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="preset-chip" onclick="fillWorkoutModal('Cardio - Run', 30, 300, 'Morning outdoor run')">🏃 Run 30m</span>
+                            <span class="preset-chip" onclick="fillWorkoutModal('Strength Training', 45, 220, 'Upper body workout')">🏋️ Strength 45m</span>
+                            <span class="preset-chip" onclick="fillWorkoutModal('Cardio - Cycling', 40, 350, 'Stationary bike interval')">🚴 Cycling 40m</span>
+                            <span class="preset-chip" onclick="fillWorkoutModal('HIIT Session', 25, 280, 'Tabata bodyweight HIIT')">⚡ HIIT 25m</span>
+                            <span class="preset-chip" onclick="fillWorkoutModal('Flexibility - Yoga', 30, 120, 'Relaxing morning yoga')">🧘 Yoga 30m</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Workout Type *</label>
+                        <input type="text" id="mWorkoutType" th:field="*{type}" class="form-control rounded-3"
+                               placeholder="e.g. Cardio - Run, Strength" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Duration (Minutes) *</label>
+                            <input type="number" id="mWorkoutDuration" th:field="*{duration}" min="1" max="600" class="form-control rounded-3"
+                                   placeholder="30" required>
+                            <div class="form-text small">Must be > 0</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Calories Burnt (kcal) *</label>
+                            <input type="number" id="mWorkoutCalories" th:field="*{caloriesBurnt}" min="0" max="5000" class="form-control rounded-3"
+                                   placeholder="250" required>
+                            <div class="form-text small">Non-negative</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Date *</label>
+                        <input type="date" th:field="*{date}" class="form-control rounded-3" required>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Optional Notes</label>
+                        <textarea id="mWorkoutNotes" th:field="*{notes}" class="form-control rounded-3" rows="2"
+                                  placeholder="e.g. Focused on posture and core..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-success rounded-pill px-4 fw-bold">Save Workout</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 2. LOG MEAL MODAL -->
+<div class="modal fade" id="mealModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">🥗 Log Meal & Calories</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/meals}" method="post" th:object="${newMeal}">
+                <div class="modal-body">
+                    <!-- Presets -->
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">1-Click Food Presets:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <span class="preset-chip" onclick="fillMealModal('Oatmeal & Berries', '1 bowl (300g)', 320)">🥣 Oatmeal</span>
+                            <span class="preset-chip" onclick="fillMealModal('Grilled Chicken Salad', '1 plate (350g)', 420)">🥗 Chicken Salad</span>
+                            <span class="preset-chip" onclick="fillMealModal('Apple & Almonds', '1 serving', 190)">🍎 Apple & Nuts</span>
+                            <span class="preset-chip" onclick="fillMealModal('Greek Yogurt', '200g', 150)">🥛 Greek Yogurt</span>
+                            <span class="preset-chip" onclick="fillMealModal('Salmon Rice Bowl', '1 bowl', 550)">🍣 Salmon Bowl</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Food Item Name *</label>
+                        <input type="text" id="mFoodItem" th:field="*{foodItem}" class="form-control rounded-3"
+                               placeholder="e.g. Grilled Chicken Rice Bowl" required>
+                    </div>
+
+                    <div class="row g-2 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Portion / Quantity *</label>
+                            <input type="text" id="mFoodQuantity" th:field="*{quantity}" class="form-control rounded-3"
+                                   placeholder="e.g. 1 bowl (350g)" required>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Calories (kcal) *</label>
+                            <input type="number" id="mFoodCalories" th:field="*{calories}" min="0" max="10000" class="form-control rounded-3"
+                                   placeholder="450" required>
+                            <div class="form-text small">Non-negative</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-2">
+                        <label class="form-label small fw-semibold">Date *</label>
+                        <input type="date" th:field="*{date}" class="form-control rounded-3" required>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-warning text-dark rounded-pill px-4 fw-bold">Save Meal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 3. SET GOAL MODAL -->
+<div class="modal fade" id="goalModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content rounded-4 border-0 shadow">
+            <div class="modal-header border-0 pb-0">
+                <h5 class="modal-title fw-bold">🎯 Set Personal Weekly Goal</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form th:action="@{/goals}" method="post">
+                <div class="modal-body">
+                    <p class="text-muted small">Configure your weekly workout consistency target and daily calorie target.</p>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Target Workouts per Week *</label>
+                        <input type="number" name="targetWorkoutCount" min="1" max="14" class="form-control rounded-3"
+                               th:value="${currentGoal != null ? currentGoal.targetWorkoutCount : 4}" required>
+                        <div class="form-text small">Must be at least 1 workout / week</div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Target Daily Calorie Intake (kcal)</label>
+                        <input type="number" name="targetCalories" min="500" max="6000" step="50" class="form-control rounded-3"
+                               th:value="${currentGoal != null ? currentGoal.targetCalories : 2000}">
+                    </div>
+                </div>
+                <div class="modal-footer border-0 pt-0">
+                    <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 fw-bold">Save Goal</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script th:inline="javascript">
+    // Helper to fill modal from preset chips
+    function fillWorkoutModal(type, duration, calories, notes) {
+        document.getElementById('mWorkoutType').value = type;
+        document.getElementById('mWorkoutDuration').value = duration;
+        document.getElementById('mWorkoutCalories').value = calories;
+        document.getElementById('mWorkoutNotes').value = notes;
+    }
+
+    function fillMealModal(item, qty, cal) {
+        document.getElementById('mFoodItem').value = item;
+        document.getElementById('mFoodQuantity').value = qty;
+        document.getElementById('mFoodCalories').value = cal;
+    }
+
+    // Live search filter for Workouts table
+    document.getElementById('filterWorkoutsInput').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#dashWorkoutsTable tbody tr');
+        rows.forEach(r => {
+            const text = r.innerText.toLowerCase();
+            r.style.display = text.includes(q) ? '' : 'none';
+        });
+    });
+
+    // Live search filter for Meals table
+    document.getElementById('filterMealsInput').addEventListener('input', function() {
+        const q = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#dashMealsTable tbody tr');
+        rows.forEach(r => {
+            const text = r.innerText.toLowerCase();
+            r.style.display = text.includes(q) ? '' : 'none';
+        });
+    });
+
+    // Chart.js Doughnut Chart for Daily Balance
+    /*<![CDATA[*/
+    const burned = /*[[${dailyBalance.caloriesBurned}]]*/ 0;
+    const consumed = /*[[${dailyBalance.caloriesConsumed}]]*/ 0;
+    /*]]>*/
+
+    const ctx = document.getElementById('calorieChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Burned (kcal)', 'Consumed (kcal)'],
+            datasets: [{
+                data: [burned > 0 ? burned : (consumed > 0 ? 0 : 1),
+                       consumed > 0 ? consumed : (burned > 0 ? 0 : 1)],
+                backgroundColor: ['#10b981', '#f59e0b'],
+                borderWidth: 2,
+                borderColor: '#ffffff',
+                hoverOffset: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: true,
+            cutout: '70%',
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: function(item) {
+                            return ' ' + item.label + ': ' + item.raw;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+</body>
+</html>

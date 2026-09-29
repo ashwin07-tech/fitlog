@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitLog — Log Workout Session</title>
+    <!-- Google Fonts: Plus Jakarta Sans -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5.3 & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --burn: #10b981;
+            --burn-light: #ecfdf5;
+            --surface: #ffffff;
+            --bg: #f8fafc;
+            --border: #e2e8f0;
+            --text-dark: #0f172a;
+            --text-muted: #64748b;
+        }
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: var(--bg);
+            color: var(--text-dark);
+            min-height: 100vh;
+        }
+        .navbar-custom {
+            background: #0f172a;
+            border-bottom: 1px solid #1e293b;
+        }
+        .card-custom {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            box-shadow: 0 4px 15px -3px rgba(15, 23, 42, 0.04);
+        }
+        .preset-chip {
+            background: #f1f5f9;
+            border: 1px solid #cbd5e1;
+            border-radius: 20px;
+            padding: 5px 14px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: #334155;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            user-select: none;
+            display: inline-block;
+        }
+        .preset-chip:hover {
+            background: #e0e7ff;
+            border-color: var(--primary);
+            color: var(--primary);
+            transform: scale(1.03);
+        }
+    </style>
+</head>
+<body>
+
+<!-- TOP NAVIGATION BAR -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom py-2 sticky-top">
+    <div class="container-xl">
+        <a class="navbar-brand d-flex align-items-center gap-2 fw-bold text-white fs-4" th:href="@{/dashboard}">
+            <span class="p-1 rounded-3 bg-primary text-white"><i class="bi bi-activity"></i></span>
+            <span>FitLog</span>
+            <span class="badge bg-primary-subtle text-primary-emphasis fs-8 rounded-pill px-2">MVP</span>
+        </a>
+        <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navContent">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navContent">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0 ms-lg-3 gap-1">
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/dashboard}">
+                        <i class="bi bi-grid-1x2-fill me-1"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 active text-white fw-semibold" th:href="@{/workouts/log}">
+                        <i class="bi bi-lightning-charge-fill me-1 text-success"></i> Log Workout
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/meals/log}">
+                        <i class="bi bi-egg-fried me-1"></i> Log Meal
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link px-3 text-secondary" th:href="@{/profile}">
+                        <i class="bi bi-person-circle me-1"></i> Profile & BMR
+                    </a>
+                </li>
+            </ul>
+
+            <div class="d-flex align-items-center gap-3">
+                <a th:href="@{/swagger-ui.html}" target="_blank" class="btn btn-outline-info btn-sm rounded-pill px-3">
+                    <i class="bi bi-code-slash me-1"></i> Swagger API Docs
+                </a>
+
+                <!-- User Switcher Dropdown -->
+                <div class="dropdown">
+                    <button class="btn btn-sm btn-dark border border-secondary-subtle rounded-pill dropdown-toggle d-flex align-items-center gap-2 px-3 text-white" type="button" data-bs-toggle="dropdown">
+                        <i class="bi bi-person-check-fill text-success"></i>
+                        <span th:text="${currentUser.name != null ? currentUser.name : currentUser.username}">Alex Mercer</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end shadow-sm border-0 rounded-3 mt-2">
+                        <li class="dropdown-header text-uppercase fs-8 fw-bold">Switch User</li>
+                        <li th:each="u : ${allUsers}">
+                            <form th:action="@{/users/switch}" method="post" class="m-0">
+                                <input type="hidden" name="userId" th:value="${u.id}"/>
+                                <button type="submit" class="dropdown-item d-flex align-items-center justify-content-between py-2"
+                                        th:classappend="${u.id == currentUser.id} ? 'active bg-primary' : ''">
+                                    <span th:text="${u.name != null ? u.name : u.username}">User</span>
+                                    <span class="badge bg-secondary-subtle text-dark fs-8" th:text="${u.username}">username</span>
+                                </button>
+                            </form>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- MAIN CONTENT -->
+<div class="container-xl py-4">
+
+    <!-- Flash Messages -->
+    <div th:if="${successMessage}" class="alert alert-success alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-check-circle-fill me-2 fs-5"></i>
+        <span th:text="${successMessage}">Success message</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+    <div th:if="${errorMessage}" class="alert alert-danger alert-dismissible fade show rounded-4 border-0 shadow-sm mb-4" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2 fs-5"></i>
+        <strong class="me-1">Validation Notice:</strong>
+        <span th:text="${errorMessage}">Error message</span>
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+
+    <!-- TITLE -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+        <div>
+            <h2 class="fw-bold mb-1">Workout Tracking</h2>
+            <p class="text-muted mb-0">Record exercise sessions (Cardio/Strength) with duration, calories burned, and notes.</p>
+        </div>
+        <a th:href="@{/dashboard}" class="btn btn-outline-secondary rounded-pill px-4">
+            <i class="bi bi-arrow-left me-1"></i> Dashboard
+        </a>
+    </div>
+
+    <div class="row g-4">
+        <!-- LOG WORKOUT FORM CARD -->
+        <div class="col-lg-5">
+            <div class="card card-custom p-4">
+                <div class="d-flex align-items-center gap-2 mb-3">
+                    <span class="badge bg-success-subtle text-success p-2 rounded-3 fs-5">
+                        <i class="bi bi-lightning-charge-fill"></i>
+                    </span>
+                    <h5 class="fw-bold mb-0">Log New Session</h5>
+                </div>
+
+                <!-- 1-Click Quick Presets -->
+                <div class="mb-3">
+                    <label class="form-label small fw-bold text-muted mb-2">⚡ 1-Click Activity Presets:</label>
+                    <div class="d-flex flex-wrap gap-2">
+                        <span class="preset-chip" onclick="applyPreset('Cardio - Outdoor Run', 30, 300, 'Steady pace 5km jog')">🏃 Run 30m</span>
+                        <span class="preset-chip" onclick="applyPreset('Strength - Full Body', 45, 240, 'Squats, deadlifts, and bench')">🏋️ Strength 45m</span>
+                        <span class="preset-chip" onclick="applyPreset('Cardio - Cycling', 40, 350, 'Road cycling steady pace')">🚴 Cycling 40m</span>
+                        <span class="preset-chip" onclick="applyPreset('Cardio - HIIT Cardio', 25, 280, 'Tabata intervals')">⚡ HIIT 25m</span>
+                        <span class="preset-chip" onclick="applyPreset('Flexibility - Yoga', 30, 120, 'Vinyasa flow stretch')">🧘 Yoga 30m</span>
+                        <span class="preset-chip" onclick="applyPreset('Cardio - Brisk Walk', 30, 150, 'Brisk evening walk')">🚶 Walk 30m</span>
+                    </div>
+                </div>
+
+                <form th:action="@{/workouts}" method="post" th:object="${newWorkout}">
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Workout Type / Category *</label>
+                        <input type="text" id="workoutType" th:field="*{type}" class="form-control rounded-3"
+                               placeholder="e.g. Cardio - Running, Strength Training" required>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Duration (Minutes) *</label>
+                            <input type="number" id="workoutDuration" th:field="*{duration}" min="1" max="600" class="form-control rounded-3"
+                                   placeholder="30" required>
+                            <div class="form-text small">Must be > 0</div>
+                        </div>
+                        <div class="col-6">
+                            <label class="form-label small fw-semibold">Calories Burnt (kcal) *</label>
+                            <input type="number" id="workoutCalories" th:field="*{caloriesBurnt}" min="0" max="5000" class="form-control rounded-3"
+                                   placeholder="250" required>
+                            <div class="form-text small">Non-negative</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label small fw-semibold">Date *</label>
+                        <input type="date" th:field="*{date}" class="form-control rounded-3" required>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold">Optional Notes</label>
+                        <textarea id="workoutNotes" th:field="*{notes}" class="form-control rounded-3" rows="2"
+                                  placeholder="e.g. Felt great, focused on upper body form..."></textarea>
+                    </div>
+
+                    <button type="submit" class="btn btn-success rounded-pill w-100 py-2 fw-bold d-flex align-items-center justify-content-center gap-2">
+                        <i class="bi bi-check-lg"></i> Record Workout
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- WORKOUT HISTORY LIST -->
+        <div class="col-lg-7">
+            <div class="card card-custom p-4">
+                <div class="d-flex flex-wrap justify-content-between align-items-center mb-3 gap-2">
+                    <h5 class="fw-bold mb-0 d-flex align-items-center gap-2">
+                        <i class="bi bi-clock-history text-primary"></i>
+                        Workout History
+                        <span class="badge bg-secondary-subtle text-dark rounded-pill fs-8" th:text="${workouts.size() + ' total'}">0</span>
+                    </h5>
+                    <!-- Live Search Box -->
+                    <div class="input-group input-group-sm" style="max-width: 240px;">
+                        <span class="input-group-text bg-white border-end-0"><i class="bi bi-search text-muted"></i></span>
+                        <input type="text" id="liveWorkoutSearch" class="form-control border-start-0" placeholder="Live filter...">
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0" id="workoutTable">
+                        <thead class="table-light">
+                            <tr class="text-muted small">
+                                <th>Date</th>
+                                <th>Type</th>
+                                <th>Duration</th>
+                                <th>Burned</th>
+                                <th>Notes</th>
+                                <th class="text-end">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr th:if="${workouts.empty}">
+                                <td colspan="6" class="text-center text-muted py-4">
+                                    <i class="bi bi-inbox fs-2 d-block mb-1"></i>
+                                    No workout sessions logged yet. Record your first workout above!
+                                </td>
+                            </tr>
+                            <tr th:each="w : ${workouts}">
+                                <td class="fw-semibold small" th:text="${w.date}">2026-09-29</td>
+                                <td>
+                                    <strong class="text-dark" th:text="${w.type}">Run</strong>
+                                </td>
+                                <td>
+                                    <span class="badge bg-light text-dark border" th:text="${w.duration + ' min'}">30 min</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-success-subtle text-success fw-bold" th:text="${'+ ' + w.caloriesBurnt + ' kcal'}">+300 kcal</span>
+                                </td>
+                                <td class="small text-muted text-truncate" style="max-width: 140px;" th:text="${w.notes != null ? w.notes : '-'}">-</td>
+                                <td class="text-end">
+                                    <form th:action="@{/workouts/delete/{id}(id=${w.id})}" method="post" class="d-inline"
+                                          onsubmit="return confirm('Remove this workout entry?');">
+                                        <button type="submit" class="btn btn-sm btn-outline-danger border-0 rounded-circle" title="Delete">
+                                            <i class="bi bi-trash3"></i>
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    function applyPreset(type, duration, calories, notes) {
+        document.getElementById('workoutType').value = type;
+        document.getElementById('workoutDuration').value = duration;
+        document.getElementById('workoutCalories').value = calories;
+        document.getElementById('workoutNotes').value = notes;
+    }
+
+    // Instant client-side search filter
+    document.getElementById('liveWorkoutSearch').addEventListener('input', function() {
+        const query = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#workoutTable tbody tr');
+        rows.forEach(row => {
+            const text = row.innerText.toLowerCase();
+            row.style.display = text.includes(query) ? '' : 'none';
+        });
+    });
+</script>
+</body>
+</html>
